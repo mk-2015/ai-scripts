@@ -1,17 +1,19 @@
-import os
 from pathlib import Path
-from typing import Any, Dict, List
 from fastapi import FastAPI
+from secrets import randbelow
+from subprocess import run, PIPE
+from typing import Any, Dict, List
+from mcp.server.fastmcp import FastMCP
+from datetime import datetime, timezone
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
-from mcp.server.fastmcp import FastMCP
 from mcp.server.transport_security import TransportSecuritySettings
+import os
 import uuid
-from secrets import randbelow
-from datetime import datetime, timezone
-from subprocess import run, PIPE
 import kvapi
+import asyncio
 import freeipapi
+import internetapi
 
 # 1. Setup Configuration
 HOST = "0.0.0.0"
@@ -318,6 +320,66 @@ def FreeIPAPI_summarizeIPinfo(ip: str) -> Dict[str, Any]:
     Description: Provides a concise summary of the key information about the IP address, including location and any notable details.
     """
     return f"Summarize the following output: {freeipapi.getIPInfo(ip)}.\nProvide a concise summary of the key information about the IP address, including location and any notable details."
+
+
+## Internet API
+@mcp.tool("clearBrowserHistory")
+def browserApi_clearBrowserHistory() -> str:
+    """
+    Returns: string for confirmation
+    Args: None
+    Description: Clears recently visited history and resets urlbar to google.com
+    """
+    return internetapi.clearVisitHistory()
+
+@mcp.tool("typeInUrlBar")
+async def browserApi_typeInUrlBar(url: str, params: dict | str | None = None, headers: dict = {}) -> str:
+    """
+    Returns: string of confirmation
+    Args:
+        url: str = the url
+        params: dict | str | None = the query params
+        headers: dict = headers to be given
+    Description: types in the url into urlbar
+    """
+
+    return await internetapi.selectUrlfromUrlBar(url, params, headers)
+
+@mcp.tool("gotoUrlInUrlBar")
+async def browserApi_gotoUrlInUrlBar(method: str = "GET", 
+                         content: str = "None: Via MCP SERVER",
+                         headers: dict = {}, 
+                         caching: bool = True,
+                         errinvalid_verb: bool = True,
+                         markdownizer: bool = True) -> str:
+    """
+    Return: string of confirmation
+    Args:
+        method: str = The method to request:
+            GET, POST, PUT, PATCH, HEAD
+        content: str = Required if using POST, PUT, PATCH for the body
+        headers: dict = headers to put in the request
+        caching: bool = Weather to cache the response or not
+        errinvalid_verb = if using invalid verb, send error or use default GET
+    """
+    
+    resp = await internetapi.gotoUrlInUrlBar(method=method, content=content,
+                                       headers=headers, caching=caching,
+                                       errinvalid_verb=errinvalid_verb)
+    if markdownizer:
+        return internetapi.convertHtmlToMarkdown
+    return resp
+
+@mcp.tool("convertHtmlToMarkdown")
+def browserApi_convertHtmlToMarkdown(html: str) -> str:
+    """
+    Returns: string thats converted into md
+    Args:
+        html: str = string version of html
+    Description: Converts html to markdown
+    """
+
+    return internetapi.convertHtmlToMarkdown(html)
 
 
 
